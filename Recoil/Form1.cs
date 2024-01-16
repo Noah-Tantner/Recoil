@@ -14,6 +14,21 @@ namespace Recoil
     {
         bool mouseIsClicked = false;
 
+        //noah's globals
+        float playerYSpeed = 0f;
+        float playerXSpeed = 0f;
+        float maxPlayerSpeed = 10f;
+
+        int bulletSpeed = 25;
+
+        double spread;
+        double xStep;
+        double yStep;
+        double deltaX;
+        double deltaY;
+        double angle;
+        //
+
         bool wDown = false;
         bool sDown = false;
         bool aDown = false;
@@ -63,15 +78,24 @@ namespace Recoil
         private void gameTimer_Tick(object sender, EventArgs e)
         {
 
-            
-            //any functions beginnign with base will be in the base for all of us, they're meant for
+
+            //any functions beginning with base will be in the base for all of us, they're meant for
             //testing I advice against changing or removing them to begin with
 
             //also, change the last parameter of this function to change the player speed
 
-            BaseMovePlayer(aDown, dDown, wDown, sDown, ref player, 8);
+            
+
+            
+
+            //BaseMovePlayer(aDown, dDown, wDown, sDown, ref player, 8);
             BaseMoveBullets();
+            
             //remember guys, just call your own functions here
+            
+            advancedMovement(wDown, sDown, aDown, dDown, ref player, ref playerYSpeed, ref playerXSpeed, 1f, 1.20f, 0.90f);
+            player.X += (int)playerXSpeed;
+            player.Y += (int)playerYSpeed;
 
             Refresh();
         }
@@ -91,6 +115,9 @@ namespace Recoil
                     break;
                 case Keys.D:
                     dDown = true;
+                    break;
+                case Keys.Escape:
+                    this.Close();
                     break;
             }
         }
@@ -177,37 +204,19 @@ namespace Recoil
         }
         public void BaseShootPistol()
         {
-            Rectangle aim = new Rectangle(0, 0, 5, 5);
-            int bulletSpeed = 25;
+            funMath();
 
-
-            double spread;
-
-            double xStep;
-            double yStep;
-            double deltaX;
-            double deltaY;
-            double angle;
-
-            aim.X = MousePosition.X;
-            aim.Y = MousePosition.Y;
-            deltaX = aim.X - player.X;
-            deltaY = aim.Y - player.Y;
-            angle = Math.Atan2(deltaY, deltaX) * 180 / Math.PI;
-
-            xStep = Math.Cos(angle * Math.PI / 180);
-            yStep = Math.Sin(angle * Math.PI / 180);
             Rectangle newBullet = new Rectangle(player.X + 10, player.Y + 10, 5, 5);
             bullets.Add(newBullet);
             bulletSpeedsX.Add(xStep * bulletSpeed);
             bulletSpeedsY.Add(yStep * bulletSpeed);
+            applyRecoil(25);
         }
 
         //individual functions begin here
         public void noahFunction()
         {
         }
-
         public void dylanFunction()
         {
 
@@ -227,51 +236,56 @@ namespace Recoil
 
         //Noah's area
 
-        //calls this method if you want accelerated, physics based movement. Beware though,
+        //call this method if you want accelerated, physics based movement. Beware though,
         //there's a LOT of parameters
         public void advancedMovement(bool upButton, bool downButton, bool leftButton, bool rightButton, ref Rectangle player, ref float YplayerSpeed, ref float XplayerSpeed, float startingSpeed, float playerAcceleration, float playerDecceleration) 
         {
-            if (upButton == true && player.Y > 0)
+            testLabel.Text = downButton.ToString();
+            if (playerYSpeed < maxPlayerSpeed && playerYSpeed > -maxPlayerSpeed)
             {
-                if (YplayerSpeed > -startingSpeed)
+                if (upButton == true && player.Y > 0)
                 {
-                    YplayerSpeed = -startingSpeed;
+                    if (YplayerSpeed > -startingSpeed)
+                    {
+                        YplayerSpeed = -startingSpeed;
+                    }
+                    YplayerSpeed = YplayerSpeed * playerAcceleration;
                 }
-                YplayerSpeed = YplayerSpeed * playerAcceleration;
+
+                if (downButton == true && player.Y < this.Height - player.Height)
+                {
+                    if (YplayerSpeed < startingSpeed)
+                    {
+                        YplayerSpeed = startingSpeed;
+                    }
+                    YplayerSpeed = YplayerSpeed * playerAcceleration;
+                }
             }
 
-            if (downButton == true && player.Y < this.Height - player.Height)
+            if (playerXSpeed < maxPlayerSpeed && playerXSpeed > -maxPlayerSpeed)
             {
-                if (YplayerSpeed < startingSpeed)
+                if (leftButton == true)
                 {
-                    YplayerSpeed = startingSpeed;
+                    if (XplayerSpeed > -startingSpeed)
+                    {
+                        XplayerSpeed = -startingSpeed;
+                    }
+                    XplayerSpeed = XplayerSpeed * playerAcceleration;
+
+
                 }
-                YplayerSpeed = YplayerSpeed * playerAcceleration;
-            }
 
-
-            if (leftButton == true)
-            {
-                if (XplayerSpeed > -startingSpeed)
+                if (rightButton == true && player.X < this.Width - player.Width)
                 {
-                    XplayerSpeed = -startingSpeed;
+                    if (XplayerSpeed < startingSpeed)
+                    {
+                        XplayerSpeed = startingSpeed;
+                    }
+                    XplayerSpeed = XplayerSpeed * playerAcceleration;
+
                 }
-                XplayerSpeed = XplayerSpeed * playerAcceleration;
-
-
             }
-
-            if (rightButton == true && player.X < this.Width - player.Width)
-            {
-                if (XplayerSpeed < startingSpeed)
-                {
-                    XplayerSpeed = startingSpeed;
-                }
-                XplayerSpeed = XplayerSpeed * playerAcceleration;
-
-            }
-
-            if (!leftButton && !rightButton)
+            if ((!leftButton && !rightButton) || (XplayerSpeed > maxPlayerSpeed || XplayerSpeed < -maxPlayerSpeed))
             {
                 if (XplayerSpeed > 0 || XplayerSpeed < 0)
                 {
@@ -279,13 +293,57 @@ namespace Recoil
                 }
             }
 
-            if (!upButton && !downButton)
+            if ((!upButton && !downButton) || (YplayerSpeed > maxPlayerSpeed || YplayerSpeed < - maxPlayerSpeed))
             {
                 if (YplayerSpeed > 0 || YplayerSpeed < 0)
                 {
                     YplayerSpeed *= playerDecceleration;
                 }
             }
+        }
+        public void limitSpeed(ref float XplayerSpeed, ref float YplayerSpeed)
+        {
+            if (XplayerSpeed >= maxPlayerSpeed)
+            {
+                XplayerSpeed = maxPlayerSpeed;
+            }
+            if (XplayerSpeed <= -maxPlayerSpeed)
+            {
+                XplayerSpeed = -maxPlayerSpeed;
+            }
+
+            if (YplayerSpeed >= maxPlayerSpeed)
+            {
+                YplayerSpeed = maxPlayerSpeed;
+            }
+            if (YplayerSpeed <= -maxPlayerSpeed)
+            {
+                YplayerSpeed = -maxPlayerSpeed;
+            }
+        }
+        public void applyRecoil(int recoilStrength)
+        {
+            funMath();
+            //angle = angle * -1;
+           playerXSpeed -= (float) xStep * recoilStrength;
+            playerYSpeed -= (float) yStep * recoilStrength;
+        }
+
+
+
+        public void funMath()
+        {
+            Rectangle aim = new Rectangle(0, 0, 5, 5);
+            
+
+            aim.X = MousePosition.X;
+            aim.Y = MousePosition.Y;
+            deltaX = aim.X - player.X;
+            deltaY = aim.Y - player.Y;
+            angle = Math.Atan2(deltaY, deltaX) * 180 / Math.PI;
+
+            xStep = Math.Cos(angle * Math.PI / 180);
+            yStep = Math.Sin(angle * Math.PI / 180);
         }
 
 
