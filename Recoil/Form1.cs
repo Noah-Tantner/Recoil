@@ -21,7 +21,21 @@ namespace Recoil
         int shotgunAmmoMax = 2;
         int bulletSpeed = 25;
         int enemyHealth = 5;
+        int enemySize = 40;
+        int enemySpeed = 3;
+        int enemySpeedMax = 5;
+        int enemyHit = -1;
         int count = 0;
+
+        Rectangle enemyAim = new Rectangle(0, 0, 1, 1);
+
+        List<Rectangle> enemies = new List<Rectangle>();
+        List<SolidBrush> enemyBrushes = new List<SolidBrush>();
+        List<int> enemyHealths= new List<int>();
+        List<int> enemySizes = new List<int>();
+        List<float> enemyXSpeeds = new List<float>();
+        List<float> enemyYSpeeds = new List<float>();
+
 
         double spread;
         double xStep;
@@ -29,6 +43,15 @@ namespace Recoil
         double deltaX;
         double deltaY;
         double angle;
+
+        double enemyXStep;
+        double enemyYStep;
+        double enemyDeltaX;
+        double enemyDeltaY;
+        double enemyAngle;
+
+        Random randGen = new Random();
+        int randValue = 0;
         //
 
         //dylan's globals
@@ -52,7 +75,6 @@ namespace Recoil
         int spikeHeight = 20;
 
         List<Rectangle> walls = new List<Rectangle>();
-        List<Rectangle> enemies = new List<Rectangle>();
         List<Rectangle> strongEnemies = new List<Rectangle>();
         List<Rectangle> spikes = new List<Rectangle>();
         List<Rectangle> explosiveBarrels = new List<Rectangle>();
@@ -69,7 +91,7 @@ namespace Recoil
         SolidBrush wallBrush = new SolidBrush(Color.Beige);
         SolidBrush enemyBrush = new SolidBrush(Color.Red);
         SolidBrush playerBrush = new SolidBrush(Color.Gold);
-        SolidBrush bulletBrush  = new SolidBrush(Color.HotPink);
+        SolidBrush bulletBrush = new SolidBrush(Color.HotPink);
 
         Pen stock = new Pen(Color.BurlyWood, 6);
 
@@ -117,6 +139,20 @@ namespace Recoil
             player.X += (int)playerXSpeed;
             player.Y += (int)playerYSpeed;
 
+            randValue = randGen.Next(1, 401);
+
+
+            //this is SUPPOSED to make enemies move
+            //Update: IT DOES MAKE ENEMIES MOVE LESS GOOOOOO
+            for (int i = 0; i < enemies.Count(); i++)
+            {
+                int x = (int)Math.Round(enemies[i].X + enemyXSpeeds[i], 0);
+                int y = (int)Math.Round(enemies[i].Y + enemyYSpeeds[i], 0);
+
+                //replace the rectangle in the list with updated one
+                enemies[i] = new Rectangle(x, y, enemySizes[i], enemySizes[i]);
+            }
+
             Refresh();
         }
 
@@ -139,7 +175,7 @@ namespace Recoil
                 case Keys.Escape:
                     this.Close();
                     break;
-                    //Dylan keys
+                //Dylan keys
                 case Keys.D1:
                     pistolfire = true;
                     shotgunfire = false;
@@ -210,11 +246,11 @@ namespace Recoil
                     e.Graphics.FillEllipse(enemyBrush, testEnemy);
                 }
                 e.Graphics.FillEllipse(wallBrush, player);
-                
+
 
                 for (int i = 0; i < bullets.Count; i++)
                 {
-                    e.Graphics.FillEllipse(bulletBrush , bullets[i]);
+                    e.Graphics.FillEllipse(bulletBrush, bullets[i]);
                 }
 
 
@@ -226,7 +262,10 @@ namespace Recoil
                 //
 
                 //noah's stuff\
-
+                for (int i = 0; i < enemies.Count(); i++)
+                {
+                        e.Graphics.FillEllipse(enemyBrushes[i], enemies[i]);
+                }
                 //
 
                 //alistair's stuff
@@ -269,7 +308,7 @@ namespace Recoil
                 int x = (int)Math.Round(bullets[i].X + bulletSpeedsX[i], 0);
                 int y = (int)Math.Round(bullets[i].Y + bulletSpeedsY[i], 0);
                 bullets[i] = new Rectangle(x, y, 5, 5);
-                
+
                 //Put this next bit on bullet move
                 if (bullets[i].IntersectsWith(explode))
                 {
@@ -278,14 +317,7 @@ namespace Recoil
                     bulletSpeedsX.RemoveAt(i);
                     bulletSpeedsY.RemoveAt(i);
                 }
-                if (bullets[i].IntersectsWith(testEnemy))
-                {
-                    bullets.RemoveAt(i);
-                    bulletSpeedsX.RemoveAt(i);
-                    bulletSpeedsY.RemoveAt(i);
-                    enemyHealth--;
-                    count = 0;
-                }
+                bulletCollision(i);
 
 
             }
@@ -311,18 +343,43 @@ namespace Recoil
             advancedMovement(wDown, sDown, aDown, dDown, ref player, ref playerYSpeed, ref playerXSpeed, 1f, 1.20f, 0.90f);
             limitPlayArea();
             testLabel.Text = $"Shotgun Ammo: {shotgunAmmo}";
-            testLabel2.Text = $"Enemy Health: {enemyHealth}";
+            testLabel2.Text = $"Enemy Hit: {enemyHit}";
             testLabel3.Text = $"Count = {count}";
-            if(shotgunAmmo < shotgunAmmoMax)
+            if (shotgunAmmo < shotgunAmmoMax)
             {
                 shotgunTimer.Enabled = true;
             }
-            else shotgunTimer.Enabled = false;  
-            if (count < 10)
+            else shotgunTimer.Enabled = false;
+            for(int i = 0;i < enemies.Count; i++)
             {
-                enemyBrush = new SolidBrush(Color.Pink);
+                if(enemyHit >= 0)
+                {
+                    if (count < 10)
+                    {
+                        enemyBrushes[enemyHit] = new SolidBrush(Color.Pink);
+                    }
+                    else enemyBrushes[enemyHit] = new SolidBrush(Color.Red);
+                }
+                
             }
-            else enemyBrush = new SolidBrush(Color.Red);
+            
+
+            //is it time to make a new enemy?
+            if (randValue < 5)
+            {
+                createEnemy(2, 1, enemyBrush);
+            }
+            enemyAI();
+            for(int i = 0; i < enemies.Count; i++)
+            {
+                if(enemyHealths[i] < 0)
+                {
+                    removeEnemy(i);
+                }
+            }
+
+
+
         }
         public void dylanFunction()
         {
@@ -426,6 +483,8 @@ namespace Recoil
         }
         public void applyRecoil(int recoilStrength)
         {
+            
+
             funMath();
             //angle = angle * -1;
             playerXSpeed -= (float)xStep * recoilStrength;
@@ -444,6 +503,19 @@ namespace Recoil
 
             xStep = Math.Cos(angle * Math.PI / 180);
             yStep = Math.Sin(angle * Math.PI / 180);
+        }
+        public void funMathEnemy(int i)
+        {
+            
+            enemyAim.X = player.X;
+            enemyAim.Y = player.Y;
+            enemyDeltaX = enemyAim.X - enemies[i].X;
+            enemyDeltaY = enemyAim.Y - enemies[i].Y;
+            enemyAngle = Math.Atan2(enemyDeltaY, enemyDeltaX) * 180 / Math.PI;
+
+            //change angle to enemyAngle
+            enemyXStep = Math.Cos(enemyAngle * Math.PI / 180);
+            enemyYStep = Math.Sin(enemyAngle * Math.PI / 180);
         }
         public void limitPlayArea()
         {
@@ -472,6 +544,72 @@ namespace Recoil
         {
             count++;
         }
+        private void enemyAI()
+        {
+            for (int i = 0; i < enemies.Count(); i++)
+            {
+                funMathEnemy(i);
+                //if (enemyXSpeeds <  )
+
+                
+
+                enemyXSpeeds[i] = (float)enemyXStep * enemySpeed;
+                enemyYSpeeds[i] = (float)enemyYStep * enemySpeed;
+                //get the new position of y and x based on speed
+            }
+        }
+        public  void createEnemy(int speedFactor, int SizeFactor, SolidBrush enemyColor)
+        {
+            y = randGen.Next(10, this.Height - player.Height - 20);
+            x = 0;
+            random = randGen.Next(1, 3);
+            if (random == 1)
+            {
+                x = 0;
+            }
+            else
+            {
+                speedFactor = -speedFactor;
+                x = this.Width;
+            }
+
+            newEnemy = new Rectangle(x, y, enemySize, enemySize);
+
+            enemies.Add(newEnemy);
+            enemyBrushes.Add(enemyColor);
+            enemyXSpeeds.Add(enemySpeed * speedFactor);
+            enemyYSpeeds.Add(enemySpeed * speedFactor);
+            enemySizes.Add(enemySize * SizeFactor);
+            enemyHealths.Add(enemyHealth);
+        }
+        public void removeEnemy(int i)
+        {
+            enemies.RemoveAt(i);
+            enemyXSpeeds.RemoveAt(i);
+            enemyYSpeeds.RemoveAt(i);
+            enemyHealths.RemoveAt(i);
+            enemyBrushes.RemoveAt(i);
+            enemySizes.RemoveAt(i);
+            enemyHit = -1;
+        }
+        public void bulletCollision(int i)
+        {
+            for(int j = 0; j < enemies.Count; j++)
+            {
+                if (bullets[i].IntersectsWith(enemies[j]))
+                {
+                    bullets.RemoveAt(i);
+                    bulletSpeedsX.RemoveAt(i);
+                    bulletSpeedsY.RemoveAt(i);
+                    enemyHealths[j]--;
+                    count = 0;
+                    enemyHit = j;
+                    break;
+                }
+            }
+        }
+        int x, y, random;
+        Rectangle newEnemy;
         //
 
         //Dylan's area
@@ -483,6 +621,7 @@ namespace Recoil
                 bullets.Add(newBullet);
                 bulletSpeedsX.Add(xStep * bulletSpeed);
                 bulletSpeedsY.Add(yStep * bulletSpeed);
+                applyRecoil(6);
             }
         }
         private void ShootShotgun()
@@ -552,5 +691,6 @@ namespace Recoil
 
     }
 }
+
 
 
