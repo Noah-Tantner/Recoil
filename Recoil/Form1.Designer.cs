@@ -36,6 +36,7 @@
             this.testLabel2 = new System.Windows.Forms.Label();
             this.countingTimer = new System.Windows.Forms.Timer(this.components);
             this.testLabel3 = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // gameTimer
@@ -86,12 +87,21 @@
             this.testLabel3.TabIndex = 2;
             this.testLabel3.Text = "Version 1.0";
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(403, 9);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(0, 16);
+            this.label1.TabIndex = 3;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.SeaGreen;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.testLabel3);
             this.Controls.Add(this.testLabel2);
             this.Controls.Add(this.testLabel);
@@ -122,6 +132,7 @@
         private System.Windows.Forms.Label testLabel2;
         private System.Windows.Forms.Timer countingTimer;
         private System.Windows.Forms.Label testLabel3;
+        private System.Windows.Forms.Label label1;
     }
 }
 

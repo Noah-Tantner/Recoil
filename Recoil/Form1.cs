@@ -17,10 +17,10 @@ namespace Recoil
         float playerXSpeed = 0f;
         float maxPlayerSpeed = 10f;
 
-        int shotgunAmmo = 2;
-        int shotgunAmmoMax = 2;
+        int shotgunAmmo = 5;
+        int shotgunAmmoMax = 5;
         int bulletSpeed = 25;
-        int enemyHealth = 5;
+        int enemyHealth = 100;
         int count = 0;
 
         double spread;
@@ -40,6 +40,7 @@ namespace Recoil
         Rectangle explode = new Rectangle(0, 0, 10, 10);
         Random randomSpread = new Random();
         Point endpoint;
+        int damage;
         //
 
         //alistair's gllobals
@@ -89,11 +90,12 @@ namespace Recoil
         {
             InitializeComponent();
 
-            GameInitialize();
+            
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            GameInitialize();
             player.X = this.Width / 2;
             player.Y = this.Height / 2;
         }
@@ -269,23 +271,62 @@ namespace Recoil
                 int x = (int)Math.Round(bullets[i].X + bulletSpeedsX[i], 0);
                 int y = (int)Math.Round(bullets[i].Y + bulletSpeedsY[i], 0);
                 bullets[i] = new Rectangle(x, y, 5, 5);
-                
+
                 //Put this next bit on bullet move
-                if (bullets[i].IntersectsWith(explode))
+                if (player.X > explode.X && rocketfire == true)
                 {
-                    bullets[i] = new Rectangle(explode.X, explode.Y, 30, 30);
-                    bullets.RemoveAt(i);
-                    bulletSpeedsX.RemoveAt(i);
-                    bulletSpeedsY.RemoveAt(i);
+                    if (bullets[i].X < explode.X)
+                    {
+                        bullets[i] = new Rectangle(explode.X, explode.Y, 30, 30);
+                        bullets.RemoveAt(i);
+                        bulletSpeedsX.RemoveAt(i);
+                        bulletSpeedsY.RemoveAt(i);
+                        break;
+                    }
                 }
+                else if (player.X < explode.X && rocketfire == true)
+                {
+                    if (bullets[i].X > explode.X)
+                    {
+                        bullets[i] = new Rectangle(explode.X, explode.Y, 30, 30);
+                        bullets.RemoveAt(i);
+                        bulletSpeedsX.RemoveAt(i);
+                        bulletSpeedsY.RemoveAt(i);
+                        break;
+                    }
+                }
+                else if (player.Y < explode.Y && rocketfire == true)
+                {
+                    if (bullets[i].Y > explode.Y)
+                    {
+                        bullets[i] = new Rectangle(explode.X, explode.Y, 30, 30);
+                        bullets.RemoveAt(i);
+                        bulletSpeedsX.RemoveAt(i);
+                        bulletSpeedsY.RemoveAt(i);
+                        break;
+                    }
+                }
+                else if (player.Y > explode.Y && rocketfire == true)
+                {
+                    if (bullets[i].Y < explode.Y)
+                    {
+                        bullets[i] = new Rectangle(explode.X, explode.Y, 30, 30);
+                        bullets.RemoveAt(i);
+                        bulletSpeedsX.RemoveAt(i);
+                        bulletSpeedsY.RemoveAt(i);
+                        break;
+                    }
+                }
+
                 if (bullets[i].IntersectsWith(testEnemy))
-                {
-                    bullets.RemoveAt(i);
-                    bulletSpeedsX.RemoveAt(i);
-                    bulletSpeedsY.RemoveAt(i);
-                    enemyHealth--;
-                    count = 0;
-                }
+                    {
+                        bullets.RemoveAt(i);
+                        bulletSpeedsX.RemoveAt(i);
+                        bulletSpeedsY.RemoveAt(i);
+                        enemyHealth -= damage;
+                        count = 0;
+                        break;
+                    }
 
 
             }
@@ -301,6 +342,7 @@ namespace Recoil
                 bulletSpeedsX.Add(xStep * bulletSpeed);
                 bulletSpeedsY.Add(yStep * bulletSpeed);
                 applyRecoil(22);
+                damage = 2;
             }
         }
         //
@@ -479,10 +521,12 @@ namespace Recoil
         {
             if (minigunfire == true)
             {
-                Rectangle newBullet = new Rectangle(player.X + 10, player.Y + 10, 5, 5);
+                Rectangle newBullet = new Rectangle(endpoint.X, endpoint.Y, 5, 5);
                 bullets.Add(newBullet);
                 bulletSpeedsX.Add(xStep * bulletSpeed);
                 bulletSpeedsY.Add(yStep * bulletSpeed);
+                applyRecoil(6);
+                damage = 1;
             }
         }
         private void ShootShotgun()
@@ -492,17 +536,18 @@ namespace Recoil
                 funMath();
                 for (int i = 0; i < 5; i++)
                 {
-                    spread = randomSpread.Next(-20, 21);
+                    spread = randomSpread.Next(-10, 11);
                     angle = Math.Atan2(deltaY, deltaX) * 180 / Math.PI + spread;
 
                     xStep = Math.Cos(angle * Math.PI / 180);
                     yStep = Math.Sin(angle * Math.PI / 180);
-                    Rectangle newBullet = new Rectangle(player.X + 10, player.Y + 10, 5, 5);
+                    Rectangle newBullet = new Rectangle(endpoint.X, endpoint.Y, 5, 5);
                     bullets.Add(newBullet);
                     bulletSpeedsX.Add(xStep * bulletSpeed);
                     bulletSpeedsY.Add(yStep * bulletSpeed);
                 }
                 applyRecoil(32);
+                damage = 3;
                 shotgunAmmo--;
             }
         }
@@ -510,12 +555,14 @@ namespace Recoil
         {
             if (rocketfire == true)
             {
-                Rectangle newBullet = new Rectangle(player.X + 10, player.Y + 10, 15, 15);
+                Rectangle newBullet = new Rectangle(endpoint.X,endpoint.Y, 15, 15);
                 bullets.Add(newBullet);
                 bulletSpeedsX.Add(xStep * bulletSpeed);
                 bulletSpeedsY.Add(yStep * bulletSpeed);
-                explode.X = aim.X;
-                explode.Y = aim.Y;
+                explode.X = aim.X + (int)(Math.Cos(angle * Math.PI / 180.0));
+                explode.Y = aim.Y + (int)(Math.Sin(angle * Math.PI / 180.0));
+                applyRecoil(64);
+                damage = 5;
             }
         }
         private void Form1_MouseDown(object sender, MouseEventArgs e)
