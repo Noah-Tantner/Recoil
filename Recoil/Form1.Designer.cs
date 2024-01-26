@@ -41,6 +41,7 @@
             this.subtitleLabel2 = new System.Windows.Forms.Label();
             this.testLabel4 = new System.Windows.Forms.Label();
             this.playerHealthLabel = new System.Windows.Forms.Label();
+            this.music = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // gameTimer
@@ -97,17 +98,17 @@
             // titleLabel
             // 
             this.titleLabel.AutoSize = true;
-            this.titleLabel.Font = new System.Drawing.Font("Vineta BT", 72F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 72F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.titleLabel.ForeColor = System.Drawing.Color.Firebrick;
             this.titleLabel.Location = new System.Drawing.Point(459, 404);
             this.titleLabel.Name = "titleLabel";
-            this.titleLabel.Size = new System.Drawing.Size(764, 162);
+            this.titleLabel.Size = new System.Drawing.Size(504, 135);
             this.titleLabel.TabIndex = 3;
             this.titleLabel.Text = "RECOIL";
             // 
             // subtitleLabel
             // 
-            this.subtitleLabel.Font = new System.Drawing.Font("Vineta BT", 19.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.subtitleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 19.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.subtitleLabel.ForeColor = System.Drawing.Color.Firebrick;
             this.subtitleLabel.Location = new System.Drawing.Point(58, 84);
             this.subtitleLabel.Name = "subtitleLabel";
@@ -117,13 +118,13 @@
             // 
             // subtitleLabel2
             // 
-            this.subtitleLabel2.Font = new System.Drawing.Font("Vineta BT", 19.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.subtitleLabel2.Font = new System.Drawing.Font("Microsoft Sans Serif", 19.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.subtitleLabel2.ForeColor = System.Drawing.Color.Firebrick;
-            this.subtitleLabel2.Location = new System.Drawing.Point(3, 404);
+            this.subtitleLabel2.Location = new System.Drawing.Point(3, 402);
             this.subtitleLabel2.Name = "subtitleLabel2";
             this.subtitleLabel2.Size = new System.Drawing.Size(441, 151);
             this.subtitleLabel2.TabIndex = 6;
-            this.subtitleLabel2.Text = "Press space to start playing";
+            this.subtitleLabel2.Text = "Press space to use functional map gen, press enter to use classic gen.";
             // 
             // testLabel4
             // 
@@ -145,6 +146,12 @@
             this.playerHealthLabel.TabIndex = 8;
             this.playerHealthLabel.Text = "Health:";
             // 
+            // music
+            // 
+            this.music.Enabled = true;
+            this.music.Interval = 126500;
+            this.music.Tick += new System.EventHandler(this.music_Tick);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -165,7 +172,6 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Form1";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
-            this.Load += new System.EventHandler(this.Form1_Load);
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.Form1_Paint);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Form1_KeyDown);
             this.KeyUp += new System.Windows.Forms.KeyEventHandler(this.Form1_KeyUp);
@@ -191,6 +197,7 @@
         private System.Windows.Forms.Label subtitleLabel2;
         private System.Windows.Forms.Label testLabel4;
         private System.Windows.Forms.Label playerHealthLabel;
+        private System.Windows.Forms.Timer music;
     }
 }
 

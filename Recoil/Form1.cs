@@ -1,4 +1,8 @@
-﻿using System;
+﻿//Noah Tantner, Alistair Krieck, Dylan DeGroot
+//January 26th, 2024
+// A physics based top-down 2D shooter with procedural map generation, vector based
+//gun mechanics and revolutionary enemy design.
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,6 +12,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.Linq.Expressions;
+using System.Threading;
 
 namespace Recoil
 {
@@ -37,7 +43,7 @@ namespace Recoil
         List<Rectangle> enemies = new List<Rectangle>();
         List<SolidBrush> enemyBrushes = new List<SolidBrush>();
 
-        List<int> enemyHealths= new List<int>();
+        List<int> enemyHealths = new List<int>();
         List<int> enemySizes = new List<int>();
         List<float> enemyXSpeeds = new List<float>();
         List<float> enemyYSpeeds = new List<float>();
@@ -74,20 +80,26 @@ namespace Recoil
         List<string> bulletproperties = new List<string>();
         List<int> blasttime = new List<int>();
         List<Rectangle> explosion = new List<Rectangle>();
-
+        System.Windows.Media.MediaPlayer backgroundMusic = new System.Windows.Media.MediaPlayer();
         //
 
         //alistair's gllobals
-        int playerHealth = 5;
+        bool classicGen = false;
+        bool mapCleared = false;
+        bool enemiesLoaded = false;
+
+        int enemyCount = 10;
 
         int wallWidth = 25;
 
-        int enemyDimentions = 20;
+        int score = 0;
+
         int spikeWidth = 10;
         int spikeHeight = 20;
 
         List<Rectangle> walls = new List<Rectangle>();
         List<Rectangle> spikes = new List<Rectangle>();
+        List<Rectangle> gates = new List<Rectangle>();
 
         List<List<string>> Rows = new List<List<string>>();
         List<string> ActiveRow = new List<string>();
@@ -100,12 +112,9 @@ namespace Recoil
 
         Random mapPick = new Random();
         string[] upMaps = new string[] { "hub", "vertHallway" };
-        string[] downMaps = new string[] { "hub", "vertHallway" }; //LBracket1
+        string[] downMaps = new string[] { "hub", "vertHallway", "lBracket1"}; 
         string[] rightMaps = new string[] { "hub", "horizHallway", "maze" };
-        string[] leftMaps = new string[] { "hub", "horizHallway", "maze" }; //LBracket1
-
-        Stopwatch playerIFrames = new Stopwatch();
-
+        string[] leftMaps = new string[] { "hub", "horizHallway", "maze", "LBracket1"};
         //
 
 
@@ -120,6 +129,7 @@ namespace Recoil
         SolidBrush playerBrush = new SolidBrush(Color.Gold);
         SolidBrush bulletBrush = new SolidBrush(Color.Goldenrod);
         SolidBrush spikeBrush = new SolidBrush(Color.Goldenrod);
+        SolidBrush gateBrush = new SolidBrush(Color.HotPink);
 
 
         Pen stock = new Pen(Color.BurlyWood, 6);
@@ -139,38 +149,42 @@ namespace Recoil
         public Form1()
         {
             InitializeComponent();
+            backgroundMusic.Open(new Uri(Application.StartupPath + "/Resources/AUD-20240113-WA0009.wav"));
+            backgroundMusic.Play();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            player.X = this.Width / 2;
-            player.Y = this.Height / 2;
-        }
 
+        
+        //initializes the game
         public void GameInitialize()
         {
-                gameTimer.Enabled = true;
+            gameTimer.Enabled = true;
 
-                shotgunAmmo = 2;
-                playerHealth = 5;
+            mapCleared = false;
+            enemiesLoaded = false;
 
-                player.X = this.Width / 2;
-                player.Y = this.Height / 2;
+            shotgunAmmo = 2;
 
-                currentColumn = 0;
-                currentRow = 0;
+            score = 0;
 
-                Rows.Clear();
-                ClearBullets();
-                enemies.Clear();
+            player.X = this.Width / 2;
+            player.Y = this.Height / 2;
 
-                ActiveRow.Add("hub");
-                Rows.Add(ActiveRow);
+            currentColumn = 0;
+            currentRow = 0;
 
-                gameState = "running";
+            ActiveRow.Clear();
+            Rows.Clear();
+            ClearBullets();
+            enemies.Clear();
+
+            ActiveRow.Add("hub");
+            Rows.Add(ActiveRow);
+
+            gameState = "running";
         }
 
-
+        //runs the game and does all the processes
         private void gameTimer_Tick(object sender, EventArgs e)
         {
             moveBullets();
@@ -198,6 +212,7 @@ namespace Recoil
             Refresh();
         }
 
+        //makes keys be keys
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             switch (e.KeyCode)
@@ -215,9 +230,10 @@ namespace Recoil
                     dDown = true;
                     break;
                 case Keys.Space:
-                    if(gameState == "waiting" || gameState == "gameover")
+                    if (gameState == "waiting" || gameState == "gameover")
                     {
                         GameInitialize();
+                        classicGen = false;
                     }
                     break;
                 case Keys.Escape:
@@ -260,10 +276,19 @@ namespace Recoil
                     sniperfire = true;
                     break;
 
+                //alistairs keys
+                case Keys.Enter:
+                    if (gameState == "waiting" || gameState == "gameover")
+                    {
+                        GameInitialize();
+                        classicGen = true;
+                    }
+                    break;
 
             }
         }
 
+        //makes keys not be keys anymore
         private void Form1_KeyUp(object sender, KeyEventArgs e)
         {
             switch (e.KeyCode)
@@ -282,6 +307,8 @@ namespace Recoil
                     break;
             }
         }
+
+        //does the shooting when you click the mouse
         private void Form1_MouseClick(object sender, MouseEventArgs e)
         {
             shootPistol();
@@ -289,6 +316,8 @@ namespace Recoil
             ShootSniper();
             RocketLauncher();
         }
+
+        //makes the game screen
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
             if (gameState == "waiting")
@@ -297,14 +326,14 @@ namespace Recoil
                 subtitleLabel.Visible = true;
                 titleLabel.Text = "RECOIL";
                 subtitleLabel.Text = "There are four weapons, each on the respective number button:\n " +
-                                     "1. Pistol 2. Shotgun 3. Minigun 4. Rocket launcher (doesn't work) 5. Sniper (doesn't work either)" ;
+                                     "1. Pistol 2. Shotgun 3. Minigun 4. Rocket launcher 5. Sniper";
             }
             else if (gameState == "gameover")
             {
                 titleLabel.Visible = true;
                 subtitleLabel.Visible = true;
                 titleLabel.Text = "GAME OVER";
-                subtitleLabel.Text = "Press space to play again.";
+                subtitleLabel.Text = "Press space / enter to play again.";
             }
 
             else if (gameState == "running")
@@ -339,7 +368,7 @@ namespace Recoil
                 //draw all the enemies
                 for (int i = 0; i < enemies.Count(); i++)
                 {
-                        e.Graphics.FillEllipse(enemyBrushes[i], enemies[i]);
+                    e.Graphics.FillEllipse(enemyBrushes[i], enemies[i]);
                 }
                 //
 
@@ -348,9 +377,15 @@ namespace Recoil
                 {
                     e.Graphics.FillRectangle(wallBrush, walls[i]);
                 }
+
                 for (int i = 0; i < spikes.Count; i++)
                 {
                     e.Graphics.FillRectangle(spikeBrush, spikes[i]);
+                }
+
+                for (int i = 0; i < gates.Count; i++)
+                {
+                    e.Graphics.FillRectangle(gateBrush, gates[i]);
                 }
 
                 //
@@ -360,6 +395,8 @@ namespace Recoil
         }
 
         //basefunctions here. Let's just not change these alright guys?
+
+        //makes the player move in a basic way
         public void BaseMovePlayer(bool leftButton, bool rightButton, bool upButton, bool downButton, ref Rectangle player, int playerSpeed)
         {
 
@@ -380,7 +417,7 @@ namespace Recoil
                 player.X += playerSpeed;
             }
         }
-        
+
         //this method makes bullets move and do their other things that they do
         public void moveBullets()
         {
@@ -451,13 +488,14 @@ namespace Recoil
 
 
 
-               
+
 
 
 
             }
 
         }
+        //shoots the pistol
         public void shootPistol()
         {
             if (pistolfire)
@@ -483,7 +521,7 @@ namespace Recoil
             //these Labels tell the player all the information he needs
             testLabel.Text = $"Shotgun Ammo: {shotgunAmmo}";
             testLabel2.Text = $"";
-            testLabel3.Text = $"Count = {ammoCount}";
+            testLabel3.Text = $"Score = {score}";
             testLabel4.Text = $"Sniper Ammo: {sniperAmmo}";
             if (shotgunAmmo < shotgunAmmoMax || sniperAmmo < sniperAmmoMax)
             {
@@ -492,9 +530,9 @@ namespace Recoil
             else ammoTimer.Enabled = false;
             //this for loop makes enemies flash when they get hit and end the game when the player
             //touches one
-            for(int i = 0;i < enemies.Count; i++)
+            for (int i = 0; i < enemies.Count; i++)
             {
-                if(enemyHit >= 0)
+                if (enemyHit >= 0)
                 {
                     if (count < 10)
                     {
@@ -507,12 +545,12 @@ namespace Recoil
                 {
                     gameState = "gameover";
                 }
-                
+
                 for (int j = 0; j < explosion.Count; j++)
                 {
                     if (explosion[j].IntersectsWith(enemies[i]))
                     {
-                            removeEnemy(i);
+                        removeEnemy(i);
                     }
                 }
                 //here we should add that if a player touches a spike the game is over
@@ -521,21 +559,43 @@ namespace Recoil
 
 
             //is it time to make a new enemy?
-            if (randValue < 5)
+
+            if (classicGen == false)
             {
-                createEnemy(2, 1, enemyBrush);
-            }
-            enemyAI();
-            for(int i = 0; i < enemies.Count; i++)
-            {
-                if(enemyHealths[i] < 0)
+                if (enemiesLoaded == false)
                 {
-                    removeEnemy(i);
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        createEnemy(2, 1, enemyBrush);
+                        enemiesLoaded = true;
+                    }
+                }
+            }
+
+            else
+            {
+                if (randValue < 5)
+                {
+                    createEnemy(2, 1, enemyBrush);
                 }
             }
 
 
 
+
+            enemyAI();
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemyHealths[i] < 0)
+                {
+                    removeEnemy(i);
+                }
+            }
+
+            if (enemies.Count == 0)
+            {
+                mapCleared = true;
+            }
         }
         public void dylanFunction()
         {
@@ -649,7 +709,7 @@ namespace Recoil
         //opposite to where the mouse is relative to the player
         public void applyRecoil(int recoilStrength)
         {
-            
+
 
             funMath();
             //angle = angle * -1;
@@ -674,7 +734,7 @@ namespace Recoil
         //this method does some math, calculating the angle between the enemy in question and the player
         public void funMathEnemy(int i)
         {
-            
+
             enemyAim.X = player.X;
             enemyAim.Y = player.Y;
             enemyDeltaX = enemyAim.X - enemies[i].X;
@@ -688,24 +748,24 @@ namespace Recoil
         //this method makes it so the player can't leave the screen
         public void limitPlayArea()
         {
-            if(player.X > this.Width - player.Width)
+            if (player.X > this.Width - player.Width)
             {
                 player.X = this.Width - player.Width;
             }
-            if(player.Y > this.Height - player.Height)
+            if (player.Y > this.Height - player.Height)
             {
                 player.Y = this.Height - player.Height;
             }
-            if(player.X < 0)
+            if (player.X < 0)
             {
                 player.X = 0;
             }
-            if(player.Y < 0)
+            if (player.Y < 0)
             {
                 player.Y = 0;
             }
         }
-        
+
         //this tick method adds 1 to count everytime it's called
         private void countingTimer_Tick(object sender, EventArgs e)
         {
@@ -719,15 +779,13 @@ namespace Recoil
                 funMathEnemy(i);
                 //if (enemyXSpeeds <  )
 
-                
-
                 enemyXSpeeds[i] = (float)enemyXStep * enemySpeed;
                 enemyYSpeeds[i] = (float)enemyYStep * enemySpeed;
                 //get the new position of y and x based on speed
             }
         }
         //this method creates an enemy using the given parameters when called
-        public  void createEnemy(int speedFactor, int SizeFactor, SolidBrush enemyColor)
+        public void createEnemy(int speedFactor, int SizeFactor, SolidBrush enemyColor)
         {
             y = randGen.Next(10, this.Height - player.Height - 20);
             x = 0;
@@ -760,47 +818,55 @@ namespace Recoil
             enemyHealths.RemoveAt(i);
             enemyBrushes.RemoveAt(i);
             enemySizes.RemoveAt(i);
+            score++;
             enemyHit = -1;
         }
         //this method makes bullets disappear and apply damage when they hit an enemy
         public void bulletCollision(int i)
         {
-            //for (int k = 0; k < walls.Count; k++)
-            //{
-            //    if (bullets[i].IntersectsWith(walls[k]))
-            //    {
-            //        bullets.RemoveAt(i);
-            //        bulletSpeedsX.RemoveAt(i);
-            //        bulletSpeedsY.RemoveAt(i);
-            //        bulletproperties.RemoveAt(i);
-            //        break;
-            //    }
-            //}
-
-            for (int j = 0; j < enemies.Count; j++)
+            try
             {
-                if (bullets[i].IntersectsWith(enemies[j]))
+                for (int k = 0; k < walls.Count; k++)
                 {
-                    if (bulletproperties[i] == "penetration")
-                    {
-                        enemyHealth -= damage;
-                        count = 0;
-                        break;
-                    }
-                    else
+                    if (bullets[i].IntersectsWith(walls[k]))
                     {
                         bullets.RemoveAt(i);
                         bulletSpeedsX.RemoveAt(i);
                         bulletSpeedsY.RemoveAt(i);
                         bulletproperties.RemoveAt(i);
-                        enemyHealths[j] -= damage;
-                        count = 0;
-                        enemyHit = j;
                         break;
                     }
                 }
+
+                for (int j = 0; j < enemies.Count; j++)
+                {
+                    if (bullets[i].IntersectsWith(enemies[j]))
+                    {
+                        if (bulletproperties[i] == "penetration")
+                        {
+                            enemyHealth -= damage;
+                            count = 0;
+                            break;
+                        }
+                        else
+                        {
+                            bullets.RemoveAt(i);
+                            bulletSpeedsX.RemoveAt(i);
+                            bulletSpeedsY.RemoveAt(i);
+                            bulletproperties.RemoveAt(i);
+                            enemyHealths[j] -= damage;
+                            count = 0;
+                            enemyHit = j;
+                            break;
+                        }
+                    }
+                }
             }
-            
+
+            catch
+            {
+
+            }
 
         }
         //the following method was created because Dylan repeated a lot of code and was too lazy to 
@@ -817,12 +883,13 @@ namespace Recoil
         }
 
 
-
         int x, y, random;
         Rectangle newEnemy;
         //
 
         //Dylan's area
+
+        //makes the minigun shoot 
         private void minigunTimer_Tick(object sender, EventArgs e)
         {
             if (minigunfire == true)
@@ -837,19 +904,21 @@ namespace Recoil
 
             }
         }
+        //adds ammo after a period of time
         private void ammoTimer_Tick(object sender, EventArgs e)
         {
             shotgunAmmo++;
             ammoCount++;
-            if(ammoCount % 2 == 0)
+            if (ammoCount % 2 == 0)
             {
                 sniperAmmo++;
             }
-            if(ammoCount == 100)
+            if (ammoCount == 100)
             {
                 ammoCount = 0;
             }
         }
+        //shoots the shotgun
         private void ShootShotgun()
         {
             if (shotgunfire == true && shotgunAmmo != 0)
@@ -873,6 +942,7 @@ namespace Recoil
                 shotgunAmmo--;
             }
         }
+        //shoots the sniper
         public void ShootSniper()
         {
             if (sniperfire == true && sniperAmmo != 0)
@@ -887,7 +957,7 @@ namespace Recoil
                 sniperAmmo--;
             }
         }
-
+        //shoots the rocket launcher
         public void RocketLauncher()
         {
             if (rocketfire == true)
@@ -901,17 +971,19 @@ namespace Recoil
                 bulletproperties.Add("explosion");
                 applyRecoil(48);
                 damage = 5;
-
             }
         }
+        //if mouse is held down, minigun fires
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
             minigunTimer.Enabled = true;
         }
+        //if mouse isn't held down, minigun doesn't fire
         private void Form1_MouseUp(object sender, MouseEventArgs e)
         {
             minigunTimer.Enabled = false;
         }
+        //makes an explosion
         public void Explosion()
         {
             for (int i = 0; i < explosion.Count; i++)
@@ -925,15 +997,22 @@ namespace Recoil
             }
         }
 
-
-
         //
 
         //Alistair's area
 
+        //loads a horizontal hallway
         public void LoadHorizHallway()
         {
             ClearMap();
+
+            enemyCount = 5;
+
+            if (mapCleared == false && classicGen == false)
+            {
+                gates.Add(new Rectangle(0, this.Height / 2 - 50, wallWidth, 150));
+                gates.Add(new Rectangle(this.Width - wallWidth, this.Height / 2 - 50, wallWidth, 150));
+            }
 
             walls.Add(new Rectangle(0, 0, wallWidth, this.Height / 2 - 50));
             walls.Add(new Rectangle(0, this.Height / 2 + 100, wallWidth, this.Height / 2 - 50));
@@ -944,13 +1023,13 @@ namespace Recoil
             walls.Add(new Rectangle(0, 0, this.Width, this.Height / 2 - 100));
             walls.Add(new Rectangle(0, this.Height / 2 + 150, this.Width, this.Height / 2 - 100));
 
-            for (int i = 0; i < 29; i++)
+            for (int i = 0; i < 32; i++)
             {
                 spikes.Add(new Rectangle(wallWidth + (i + 1) * 50, this.Height / 2 - 100, spikeWidth, spikeHeight));
                 spikes.Add(new Rectangle(wallWidth + (i + 1) * 50, this.Height / 2 + 150 - spikeHeight, spikeWidth, spikeHeight));
             }
         }
-
+        //loads a vertical hallway
         public void LoadVertHallway()
         {
             ClearMap();
@@ -970,27 +1049,37 @@ namespace Recoil
                 spikes.Add(new Rectangle(walls[5].X - spikeHeight, wallWidth + (i + 1) * 50, spikeHeight, spikeWidth));
             }
         }
-
+        //loads an L bracket(no idea what that is)
         public void LoadLBracket1()
         {
             ClearMap();
 
             walls.Add(new Rectangle(0, 0, this.Width / 2 - 100, wallWidth));
-            Rectangle topWall2 = new Rectangle(this.Width / 2 + 100, 0, this.Width / 2, wallWidth);
+            walls.Add(new Rectangle(this.Width / 2 + 100, 0, this.Width / 2, wallWidth));
 
-            Rectangle bottomWall1 = new Rectangle(0, this.Height - wallWidth, this.Width / 2 - 100, wallWidth);
-            Rectangle bottomWall2 = new Rectangle(this.Width / 2 + 100, this.Height - wallWidth, this.Width / 2, wallWidth);
+            walls.Add(new Rectangle(this.Width - wallWidth, 0, wallWidth, this.Height / 2 - 50));
+            walls.Add(new Rectangle(this.Width - wallWidth, this.Height / 2 + 100, wallWidth, this.Height / 2 - 50));
 
-            Rectangle leftWall1 = new Rectangle(0, 0, this.Width / 2 - 150, this.Height);
-            Rectangle leftWall2 = new Rectangle(0, 0, this.Width / 2 - 150, this.Height);
+            walls.Add(new Rectangle(this.Width / 2 + 150, 0, this.Width / 2 - 150, this.Height / 2 - 100));
+            walls.Add(new Rectangle(0, this.Height / 2 + 150, this.Width, this.Height / 2 - 50));
 
-            Rectangle rightWall = new Rectangle(this.Width / 2 + 150, 0, this.Height, this.Height);
+            walls.Add(new Rectangle(0, 0, this.Width / 2 - 150, this.Height));
+            walls.Add(new Rectangle(0, 0, this.Width / 2 - 150, this.Height));
         }
-
+        //loads a maze
         public void LoadMaze()
         {
             ClearMap();
-            enemies.Clear();
+
+            if (classicGen == true)
+            {
+                enemies.Clear();
+            }
+
+            else
+            {
+                enemyCount = 1;
+            }
             walls.Add(new Rectangle(0, 0, wallWidth, this.Height / 2 - 50));
             walls.Add(new Rectangle(0, this.Height / 2 + 100, wallWidth, this.Height / 2 - 50));
 
@@ -1023,23 +1112,40 @@ namespace Recoil
                 spikes.Add(new Rectangle(walls[11].X + wallWidth, (i + 1) * 100 + 200, spikeHeight, spikeWidth));
             }
         }
-
+        //loads a hub, which is a mostly empty room with some enemies in it
         public void LoadHub()
         {
             ClearMap();
+
+            enemyCount = 10;
+
+            if (classicGen == false)
+            {
+                walls.Add(new Rectangle(0, 0, this.Width, wallWidth));
+                walls.Add(new Rectangle(0, this.Height - wallWidth, this.Width, wallWidth));
+            }
+
+            else
+            {
+                walls.Add(new Rectangle(0, 0, this.Width / 2 - 100, wallWidth));
+                walls.Add(new Rectangle(this.Width / 2 + 100, 0, this.Width / 2 - 100, wallWidth));
+                walls.Add(new Rectangle(0, this.Height - wallWidth, this.Width / 2 - 100, wallWidth));
+                walls.Add(new Rectangle(this.Width / 2 + 100, this.Height - wallWidth, this.Width / 2 - 100, wallWidth));
+            }
+
+            if (mapCleared == false && classicGen == false)
+            {
+                gates.Add(new Rectangle(0, this.Height / 2 - 50, wallWidth, 150));
+                gates.Add(new Rectangle(this.Width - wallWidth, this.Height / 2 - 50, wallWidth, 150));
+            }
 
             walls.Add(new Rectangle(0, 0, wallWidth, this.Height / 2 - 50));
             walls.Add(new Rectangle(0, this.Height / 2 + 100, wallWidth, this.Height / 2 - 50));
 
             walls.Add(new Rectangle(this.Width - wallWidth, 0, wallWidth, this.Height / 2 - 50));
             walls.Add(new Rectangle(this.Width - wallWidth, this.Height / 2 + 100, wallWidth, this.Height / 2 - 50));
-
-            walls.Add(new Rectangle(0, 0, this.Width / 2 - 100, wallWidth));
-            walls.Add(new Rectangle(this.Width / 2 + 100, 0, this.Width / 2 - 100, wallWidth));
-            walls.Add(new Rectangle(0, this.Height - wallWidth, this.Width / 2 - 100, wallWidth));
-            walls.Add(new Rectangle(this.Width / 2 + 100, this.Height - wallWidth, this.Width / 2 - 100, wallWidth));
         }
-
+        //checks collisions
         public void CheckCollisions()
         {
             for (int i = 0; i < walls.Count; i++)
@@ -1078,112 +1184,37 @@ namespace Recoil
                     player.Y = this.Height - wallWidth - player.Width - 10;
                 }
             }
-            for(int i = 0; i < spikes.Count; i++)
+
+            for (int i = 0; i < gates.Count; i++)
+            {
+                if (gates[i].IntersectsWith(player) && playerXSpeed > 0)
+                {
+                    //player.X = walls[i].X - walls[i].Width;
+                    playerXSpeed *= -1;
+                }
+
+                if (gates[i].IntersectsWith(player) && playerXSpeed < 0)
+                {
+                    //player.X = walls[i].X + walls[i].Width;
+                    playerXSpeed *= -1;
+                }
+            }
+            for (int i = 0; i < spikes.Count; i++)
             {
                 if (spikes[i].IntersectsWith(player))
                 {
                     gameState = "gameover";
                 }
             }
-        } //NEEDS WORK
-
-        //public void DealPlayerDamage()
-        //{
-        //    for (int i = 0; i < enemies.Count; i++)
-        //    {
-        //        if (player.IntersectsWith(enemies[i]))
-        //        {
-        //            playerIFrames.Start();
-
-        //            //damage player
-        //            if (playerIFrames.ElapsedMilliseconds % 20 == 0 && playerHealth > 0)
-        //            {
-        //                playerHealth--;
-        //            }
-
-        //            //Bounce player off enemy
-        //            if (enemies[i].IntersectsWith(player) && playerXSpeed > 0)
-        //            {
-        //                player.X = enemies[i].X - enemies[i].Width;
-        //                playerXSpeed *= -1;
-        //            }
-
-        //            if (enemies[i].IntersectsWith(player) && playerXSpeed < 0)
-        //            {
-        //                player.X = enemies[i].X + enemies[i].Width;
-        //                playerXSpeed *= -1;
-        //            }
-        //        }
-
-        //        else
-        //        {
-        //            playerIFrames.Stop();
-        //            playerIFrames.Reset();
-        //        }
-        //    }
-
-        //    for (int i = 0; i < spikes.Count; i++)
-        //    {
-        //        if (player.IntersectsWith(spikes[i]))
-        //        {
-        //            playerIFrames.Start();
-
-        //            //damage player
-        //            if (playerIFrames.ElapsedMilliseconds % 20 == 0 && playerHealth > 0)
-        //            {
-        //                playerHealth--;
-        //            }
-
-        //            //Bounce player off spiek
-        //            if (spikes[i].IntersectsWith(player) && playerXSpeed > 0)
-        //            {
-        //                //player.X = spikes[i].X - 2 * spikeWidth;
-        //                playerXSpeed *= -1;
-        //            }
-
-        //            else if (spikes[i].IntersectsWith(player) && playerXSpeed < 0)
-        //            {
-        //                //player.X = spikes[i].X + spikeWidth;
-        //                playerXSpeed *= -1;
-        //            }
-
-        //            if (spikes[i].IntersectsWith(player) && playerYSpeed > 0)
-        //            {
-        //                //player.X = spikes[i].X - 2 * spikeWidth;
-        //                playerYSpeed *= -1;
-        //            }
-
-        //            else if (spikes[i].IntersectsWith(player) && playerYSpeed < 0)
-        //            {
-        //                //player.X = spikes[i].X + spikeWidth;
-        //                playerYSpeed *= -1;
-        //            }
-        //        }
-
-        //        else
-        //        {
-        //            playerIFrames.Stop();
-        //            playerIFrames.Reset();
-        //        }
-        //    }
-
-
-        //    //if (playerHealth == 0)
-        //    //{
-        //    //    Refresh();
-        //    //    gameState = "gameover";
-        //    //}
-
-        //}
-
+        }
+        //generates Column
         public List<string> GenerateColumn()
         {
-            
             List<string> NewColumn = new List<string>();
 
             if (player.X > this.Width && currentColumn >= ActiveRow.Count() - 1)
             {
-                player.X = 0 + wallWidth;
+                player.X = 0 + 2 * wallWidth;
                 currentColumn++;
                 Rows[currentRow].Add(ChooseMap(false, false, true, false));
                 ClearBullets();
@@ -1191,7 +1222,7 @@ namespace Recoil
 
             else if (player.X > this.Width && currentColumn < ActiveRow.Count() - 1)
             {
-                player.X = 0 + wallWidth;
+                player.X = 0 + 2 * wallWidth;
                 currentColumn++;
                 ClearBullets();
             }
@@ -1199,19 +1230,19 @@ namespace Recoil
             else if (player.X < 0 && currentColumn == 0)
             {
                 Rows[currentRow].Insert(0, ChooseMap(false, false, false, true));
-                player.X = this.Width - wallWidth;
+                player.X = this.Width - 2 * wallWidth;
                 ClearBullets();
             }
 
             else if (player.X < 0 && currentColumn > 0)
             {
                 currentColumn--;
-                player.X = this.Width - wallWidth;
+                player.X = this.Width - 2 * wallWidth;
                 ClearBullets();
             }
             return NewColumn;
         }
-
+        //generates row
         public void GenerateRow(List<string> column)
         {
             List<string> NewRow = new List<string>();
@@ -1254,13 +1285,17 @@ namespace Recoil
                 ClearBullets();
             }
         }
-
+        //chooses a map
         public string ChooseMap(bool up, bool down, bool right, bool left)
         {
-            for(int i = 0;i < enemies.Count(); i++)
+            for (int i = 0; i < enemies.Count(); i++)
             {
                 removeEnemy(i);
             }
+
+            mapCleared = false;
+            enemiesLoaded = false;
+
             string map = "hub";
             int index = 0;
 
@@ -1273,19 +1308,25 @@ namespace Recoil
                 map = rightMaps[index];
             }
 
-            if (left == true)
+            if (left == true && classicGen == true)
             {
                 index = mapPick.Next(0, leftMaps.Count());
                 map = leftMaps[index];
             }
 
-            else if (up == true)
+            if (left == true && classicGen == false)
+            {
+                index = mapPick.Next(0, leftMaps.Count() - 1);
+                map = leftMaps[index];
+            }
+
+            if (up == true)
             {
                 index = mapPick.Next(0, upMaps.Count());
                 map = upMaps[index];
             }
 
-            else if (down == true)
+            if (down == true)
             {
                 index = mapPick.Next(0, downMaps.Count());
                 map = downMaps[index];
@@ -1310,7 +1351,7 @@ namespace Recoil
             prevMap = map;
             return map;
         }
-
+        //generates a map
         public void GenerateMap()
         {
             while (currentColumn >= Rows[currentRow].Count)
@@ -1343,13 +1384,20 @@ namespace Recoil
                 LoadLBracket1();
             }
         }
-
+        //makes music refresh
+        private void music_Tick(object sender, EventArgs e)
+        {
+            backgroundMusic.Stop();
+            backgroundMusic.Play();
+        }
+        //clears map
         public void ClearMap()
         {
             walls.Clear();
             spikes.Clear();
+            gates.Clear();
         }
-
+        //clears bullets
         public void ClearBullets()
         {
             bullets.Clear();
